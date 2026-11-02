@@ -9,7 +9,8 @@ import { ResultsView } from '@/components/results/results-view'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { colleges, getCollege } from '@/lib/colleges'
-import { getSampleListings, type PropertyType } from '@/lib/sample-listings'
+import type { PropertyType } from '@/lib/data/pg-listings'
+import { getListingsByCollege } from '@/lib/services/pg-service'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!college) return {}
   return {
     title: `Stays near ${college.name} — PG HELP`,
-    description: `PGs, hostels and flats near ${college.name}, ${college.area}, Bangalore.`,
+    description: `PGs, hostels and flats near ${college.name}, ${college.area}, Bangalore. Contact numbers and Google Maps listings.`,
   }
 }
 
@@ -37,7 +38,7 @@ export default async function CollegePage({ params, searchParams }: Props) {
   const college = getCollege(slug)
   if (!college) notFound()
 
-  const collegeIndex = colleges.findIndex((c) => c.slug === slug)
+  const listings = await getListingsByCollege(slug)
   const initialType = VALID_TYPES.includes(type as PropertyType) ? (type as PropertyType) : null
   const budgetNumber = Number(budget)
   const initialBudget = Number.isFinite(budgetNumber) && budgetNumber > 0 ? budgetNumber : null
@@ -69,7 +70,7 @@ export default async function CollegePage({ params, searchParams }: Props) {
             </div>
 
             <figure>
-              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted shadow-sm">
                 <Image
                   src={college.image}
                   alt={college.imageAlt}
@@ -91,14 +92,17 @@ export default async function CollegePage({ params, searchParams }: Props) {
         </section>
 
         <div className="mx-auto max-w-7xl px-4 py-10 md:px-8">
-          <p className="mb-8 flex items-start gap-2 rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm text-secondary-foreground">
-            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            These are sample/demo listings to preview the experience near {college.shortName}. Prices, ratings and
-            distances are placeholders, not real properties.
-          </p>
+          <div className="mb-8 flex items-start gap-2.5 rounded-xl border border-border bg-secondary/60 px-4 py-3.5 text-sm text-secondary-foreground">
+            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+            <p>
+              Showing researched public map listings for student accommodation near <strong>{college.shortName}</strong>. 
+              Addresses, direct contact numbers, and Google Maps ratings are included. Rent and room availability should be verified directly with the PG management.
+            </p>
+          </div>
+
           <ResultsView
             key={college.slug}
-            listings={getSampleListings(collegeIndex)}
+            listings={listings}
             collegeShortName={college.shortName}
             initialType={initialType}
             initialBudget={initialBudget}
